@@ -1,8 +1,8 @@
 package com.amap.app.ui
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
@@ -116,20 +116,19 @@ fun DetailScreen(
             }
         }
     ) { padding ->
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .verticalScroll(rememberScrollState())
         ) {
-            item {
-                Text(
-                    text = "À prendre :",
-                    style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            itemsIndexed(person.items) { index, item ->
+            Text(
+                text = "À prendre :",
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            person.items.forEachIndexed { index, item ->
                 val checked = index in effectiveChecked
                 Card(
                     onClick = {

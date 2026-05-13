@@ -26,6 +26,7 @@ fun MainScreen(
     onReimport: () -> Unit
 ) {
     var showResetDialog by remember { mutableStateOf(false) }
+    val visiblePeople by remember { derivedStateOf { viewModel.visiblePeople } }
 
     if (showResetDialog) {
         AlertDialog(
@@ -76,7 +77,7 @@ fun MainScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            items(viewModel.visiblePeople, key = { it.name }) { person ->
+            items(visiblePeople, key = { it.name }) { person ->
                 PersonRow(person = person, onClick = { onPersonClick(person) })
             }
         }

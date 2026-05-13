@@ -184,17 +184,14 @@ fun AppContent(viewModel: MainViewModel, onReimport: () -> Unit) {
         }
         Screen.Detail -> {
             selectedName?.let { name ->
-                val person = viewModel.people.find { it.name == name }
-                if (person != null) {
-                    DetailScreen(
-                        viewModel = viewModel,
-                        person = person,
-                        onBack = {
-                            selectedName = null
-                            currentScreen = Screen.Main
-                        }
-                    )
-                }
+                DetailScreen(
+                    viewModel = viewModel,
+                    person = viewModel.people.find { it.name == name } ?: return@let,
+                    onBack = {
+                        selectedName = null
+                        currentScreen = Screen.Main
+                    }
+                )
             }
         }
     }
