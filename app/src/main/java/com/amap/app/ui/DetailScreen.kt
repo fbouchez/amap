@@ -23,6 +23,29 @@ fun DetailScreen(
     person: Person,
     onBack: () -> Unit
 ) {
+    var showConfirm by remember { mutableStateOf(false) }
+
+    if (showConfirm) {
+        AlertDialog(
+            onDismissRequest = { showConfirm = false },
+            title = { Text("Valider ${person.name} ?") },
+            text = {
+                val remaining = person.items.indices.count { it !in person.checkedItems }
+                Text("$remaining article(s) non cochés seront marqués comme non pris.")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.markDone(person)
+                    showConfirm = false
+                    onBack()
+                }) { Text("Valider quand même") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showConfirm = false }) { Text("Retour") }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -50,16 +73,19 @@ fun DetailScreen(
                 ) {
                     Button(
                         onClick = {
-                            viewModel.markDone(person)
-                            onBack()
+                            if (person.checkedItems.size == person.items.size) {
+                                viewModel.markDone(person)
+                                onBack()
+                            } else {
+                                showConfirm = true
+                            }
                         },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary
-                        ),
-                        enabled = person.checkedItems.size == person.items.size
+                        )
                     ) {
                         Icon(Icons.Default.CheckCircle, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
@@ -113,7 +139,7 @@ fun DetailScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = item,
+                            text = item.displayLabel,
                             style = MaterialTheme.typography.bodyLarge,
                             textDecoration = if (checked) TextDecoration.LineThrough else TextDecoration.None,
                             color = if (checked)

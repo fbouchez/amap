@@ -2,8 +2,13 @@ package com.amap.app.viewmodel
 
 import android.content.Context
 import android.net.Uri
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.amap.app.model.CsvParser
+import com.amap.app.model.Item
 import com.amap.app.model.Person
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -11,10 +16,9 @@ import java.io.File
 
 class MainViewModel : ViewModel() {
 
-    var people = mutableListOf<Person>()
-        private set
+    val people = mutableStateListOf<Person>()
 
-    var showDone = false
+    var showDone by mutableStateOf(false)
         private set
 
     val visiblePeople: List<Person>
@@ -23,7 +27,8 @@ class MainViewModel : ViewModel() {
     fun loadCsvFromUri(context: Context, uri: Uri) {
         val inputStream = context.contentResolver.openInputStream(uri)
         inputStream?.use { stream ->
-            people = CsvParser.parse(stream).toMutableList()
+            people.clear()
+            people.addAll(CsvParser.parse(stream))
         }
         saveState(context)
     }
@@ -31,7 +36,8 @@ class MainViewModel : ViewModel() {
     fun loadCsvFromFile(file: File): Boolean {
         if (!file.exists()) return false
         file.inputStream().use { stream ->
-            people = CsvParser.parse(stream).toMutableList()
+            people.clear()
+            people.addAll(CsvParser.parse(stream))
         }
         return people.isNotEmpty()
     }
@@ -39,7 +45,8 @@ class MainViewModel : ViewModel() {
     fun loadSampleData(context: Context) {
         val inputStream = context.assets.open("amap_sample.csv")
         inputStream.use { stream ->
-            people = CsvParser.parse(stream).toMutableList()
+            people.clear()
+            people.addAll(CsvParser.parse(stream))
         }
     }
 
@@ -48,22 +55,24 @@ class MainViewModel : ViewModel() {
     }
 
     fun toggleItem(person: Person, index: Int) {
-        if (index in person.checkedItems) {
-            person.checkedItems.remove(index)
-        } else {
-            person.checkedItems.add(index)
-        }
+        val idx = people.indexOf(person)
+        if (idx < 0) return
+        val updated = if (index in person.checkedItems)
+            person.copy(checkedItems = person.checkedItems - index)
+        else
+            person.copy(checkedItems = person.checkedItems + index)
+        people[idx] = updated
     }
 
     fun markDone(person: Person) {
-        person.isDone = true
-        person.checkedItems.clear()
+        val idx = people.indexOf(person)
+        if (idx < 0) return
+        people[idx] = person.copy(isDone = true, checkedItems = emptySet())
     }
 
     fun resetAll() {
-        people.forEach { person ->
-            person.isDone = false
-            person.checkedItems.clear()
+        for (i in people.indices) {
+            people[i] = people[i].copy(isDone = false, checkedItems = emptySet())
         }
     }
 
@@ -84,15 +93,16 @@ class MainViewModel : ViewModel() {
         val gson = Gson()
         val type = object : TypeToken<List<SerializablePerson>>() {}.type
         val saved: List<SerializablePerson> = gson.fromJson(json, type)
-        people = saved.map {
-            Person(it.name, it.items, it.checkedItems.toMutableSet(), it.isDone)
-        }.toMutableList()
+        people.clear()
+        people.addAll(saved.map {
+            Person(it.name, it.items.map { i -> Item(i.header, i.value) }, it.checkedItems.toSet(), it.isDone)
+        })
         return true
     }
 
     private data class SerializablePerson(
         val name: String,
-        val items: List<String>,
+        val items: List<Item>,
         val checkedItems: List<Int>,
         val isDone: Boolean
     )

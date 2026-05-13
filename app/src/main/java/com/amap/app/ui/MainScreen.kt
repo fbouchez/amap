@@ -1,12 +1,11 @@
 package com.amap.app.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -23,13 +22,36 @@ import com.amap.app.viewmodel.MainViewModel
 @Composable
 fun MainScreen(
     viewModel: MainViewModel,
-    onPersonClick: (Person) -> Unit
+    onPersonClick: (Person) -> Unit,
+    onReimport: () -> Unit
 ) {
+    var showResetDialog by remember { mutableStateOf(false) }
+
+    if (showResetDialog) {
+        AlertDialog(
+            onDismissRequest = { showResetDialog = false },
+            title = { Text("Tout réinitialiser ?") },
+            text = { Text("Les coches et validations en cours seront perdues.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.resetAll()
+                    showResetDialog = false
+                }) { Text("Réinitialiser") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetDialog = false }) { Text("Annuler") }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("AMAP Distribution") },
                 actions = {
+                    IconButton(onClick = onReimport) {
+                        Icon(Icons.Default.FileOpen, contentDescription = "Charger un CSV")
+                    }
                     IconButton(onClick = { viewModel.toggleShowDone() }) {
                         Icon(
                             if (viewModel.showDone) Icons.Default.VisibilityOff
@@ -37,7 +59,7 @@ fun MainScreen(
                             contentDescription = if (viewModel.showDone) "Cacher passés" else "Afficher passés"
                         )
                     }
-                    IconButton(onClick = { viewModel.resetAll() }) {
+                    IconButton(onClick = { showResetDialog = true }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Tout réinitialiser")
                     }
                 },

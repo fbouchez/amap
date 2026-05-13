@@ -9,7 +9,7 @@ object CsvParser {
         val scanner = Scanner(inputStream)
         val people = mutableListOf<Person>()
         var pending = StringBuilder()
-        var isFirstRow = true
+        var headers: List<String>? = null
 
         while (scanner.hasNextLine()) {
             val rawLine = scanner.nextLine()
@@ -23,20 +23,23 @@ object CsvParser {
 
             if (trimmed.isBlank() || trimmed.startsWith("#") || trimmed.startsWith("//")) continue
 
-            if (isFirstRow) {
-                isFirstRow = false
-                continue
-            }
-
             val parts = parseCsvLine(trimmed)
             if (parts.size < 2) continue
+
+            if (headers == null) {
+                headers = parts.map { it.trim() }
+                continue
+            }
 
             val name = parts.first().trim()
             if (name.isBlank()) continue
 
             val items = parts.drop(1)
-                .map { it.trim() }
-                .filter { it.isNotBlank() }
+                .mapIndexed { index, value ->
+                    val header = headers.getOrElse(index + 1) { "" }.trim()
+                    Item(header = header, value = value.trim())
+                }
+                .filter { it.value.isNotBlank() }
 
             if (items.isNotEmpty()) {
                 people.add(Person(name = name, items = items))

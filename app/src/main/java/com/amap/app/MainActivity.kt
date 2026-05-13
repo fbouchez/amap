@@ -26,22 +26,25 @@ import java.io.File
 
 class MainActivity : ComponentActivity() {
 
-    private val csvPicker = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        uri?.let {
-            viewModel.loadCsvFromUri(this, it)
-            setContent {
-                AmapTheme { AppContent(viewModel) }
-            }
-        }
-    }
-
+    private lateinit var csvPicker: androidx.activity.result.ActivityResultLauncher<String>
     private lateinit var viewModel: MainViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        csvPicker = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            uri?.let {
+                viewModel.loadCsvFromUri(this, it)
+                rebuildContent()
+            }
+        }
+
         handleIntentCsv(intent)
 
+        rebuildContent()
+    }
+
+    private fun rebuildContent() {
         setContent {
             AmapTheme {
                 viewModel = viewModel()
@@ -52,10 +55,10 @@ class MainActivity : ComponentActivity() {
                     if (!hasSavedState) {
                         val csvFile = File(filesDir, "current.csv")
                         val loaded = viewModel.loadCsvFromFile(csvFile)
-                        Log.d("AMAP", "LaunchedEffect: loadCsvFromFile(${csvFile.exists()}) = $loaded")
+                        Log.d("AMAP", "loadCsvFromFile(${csvFile.exists()}) = $loaded")
                         hasData.value = loaded
                     } else {
-                        Log.d("AMAP", "LaunchedEffect: restored saved state")
+                        Log.d("AMAP", "restored saved state")
                         hasData.value = true
                     }
                 }
@@ -66,12 +69,10 @@ class MainActivity : ComponentActivity() {
                             viewModel.loadSampleData(this@MainActivity)
                             hasData.value = true
                         },
-                        onLoadCsv = {
-                            csvPicker.launch("text/*")
-                        }
+                        onLoadCsv = { csvPicker.launch("text/*") }
                     )
                 } else {
-                    AppContent(viewModel)
+                    AppContent(viewModel, onReimport = { csvPicker.launch("text/*") })
                 }
             }
         }
@@ -83,21 +84,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntentCsv(intent: android.content.Intent?) {
-        val b64 = intent?.getStringExtra("csv_b64") ?: run {
-            Log.d("AMAP", "handleIntentCsv: no csv_b64 extra")
-            return
-        }
+        val b64 = intent?.getStringExtra("csv_b64") ?: return
         try {
             val decoded = Base64.decode(b64, Base64.DEFAULT)
             val content = String(decoded)
-            val file = File(filesDir, "current.csv")
-            file.writeText(content)
-
-            getSharedPreferences("amap", MODE_PRIVATE)
-                .edit()
-                .clear()
-                .apply()
-
+            File(filesDir, "current.csv").writeText(content)
+            getSharedPreferences("amap", MODE_PRIVATE).edit().clear().apply()
             Log.d("AMAP", "handleIntentCsv: wrote ${content.length} bytes, cleared saved state")
         } catch (e: Exception) {
             Log.e("AMAP", "handleIntentCsv failed", e)
@@ -175,7 +167,7 @@ fun ImportScreen(
 }
 
 @Composable
-fun AppContent(viewModel: MainViewModel) {
+fun AppContent(viewModel: MainViewModel, onReimport: () -> Unit) {
     var currentScreen by remember { mutableStateOf(Screen.Main) }
     var selectedPerson by remember { mutableStateOf<Person?>(null) }
 
@@ -186,7 +178,8 @@ fun AppContent(viewModel: MainViewModel) {
                 onPersonClick = { person ->
                     selectedPerson = person
                     currentScreen = Screen.Detail
-                }
+                },
+                onReimport = onReimport
             )
         }
         Screen.Detail -> {
