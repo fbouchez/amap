@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,6 +25,7 @@ fun DetailScreen(
     onBack: () -> Unit
 ) {
     var showConfirm by remember { mutableStateOf(false) }
+    val effectiveChecked = if (person.isDone) person.items.indices.toSet() else person.checkedItems
 
     if (showConfirm) {
         AlertDialog(
@@ -66,11 +68,25 @@ fun DetailScreen(
             )
         },
         bottomBar = {
-            if (!person.isDone) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shadowElevation = 8.dp
-                ) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shadowElevation = 8.dp
+            ) {
+                if (person.isDone) {
+                    OutlinedButton(
+                        onClick = {
+                            viewModel.unmarkDone(person)
+                            onBack()
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Annuler la validation")
+                    }
+                } else {
                     Button(
                         onClick = {
                             if (person.checkedItems.size == person.items.size) {
@@ -114,7 +130,7 @@ fun DetailScreen(
                 )
             }
             itemsIndexed(person.items) { index, item ->
-                val checked = index in person.checkedItems
+                val checked = index in effectiveChecked
                 Card(
                     onClick = {
                         if (!person.isDone) {

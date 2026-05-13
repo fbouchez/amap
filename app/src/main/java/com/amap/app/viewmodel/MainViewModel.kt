@@ -67,7 +67,13 @@ class MainViewModel : ViewModel() {
     fun markDone(person: Person) {
         val idx = people.indexOf(person)
         if (idx < 0) return
-        people[idx] = person.copy(isDone = true, checkedItems = emptySet())
+        people[idx] = person.copy(isDone = true, checkedItems = person.items.indices.toSet())
+    }
+
+    fun unmarkDone(person: Person) {
+        val idx = people.indexOf(person)
+        if (idx < 0) return
+        people[idx] = person.copy(isDone = false, checkedItems = emptySet())
     }
 
     fun resetAll() {
