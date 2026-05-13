@@ -169,29 +169,32 @@ fun ImportScreen(
 @Composable
 fun AppContent(viewModel: MainViewModel, onReimport: () -> Unit) {
     var currentScreen by remember { mutableStateOf(Screen.Main) }
-    var selectedPerson by remember { mutableStateOf<Person?>(null) }
+    var selectedName by remember { mutableStateOf<String?>(null) }
 
     when (currentScreen) {
         Screen.Main -> {
             MainScreen(
                 viewModel = viewModel,
                 onPersonClick = { person ->
-                    selectedPerson = person
+                    selectedName = person.name
                     currentScreen = Screen.Detail
                 },
                 onReimport = onReimport
             )
         }
         Screen.Detail -> {
-            selectedPerson?.let { person ->
-                DetailScreen(
-                    viewModel = viewModel,
-                    person = person,
-                    onBack = {
-                        selectedPerson = null
-                        currentScreen = Screen.Main
-                    }
-                )
+            selectedName?.let { name ->
+                val person = viewModel.people.find { it.name == name }
+                if (person != null) {
+                    DetailScreen(
+                        viewModel = viewModel,
+                        person = person,
+                        onBack = {
+                            selectedName = null
+                            currentScreen = Screen.Main
+                        }
+                    )
+                }
             }
         }
     }
