@@ -31,6 +31,9 @@ class MainViewModel : ViewModel() {
     var headerlessInfo by mutableStateOf<List<Pair<String, String>>>(emptyList())
         private set
 
+    var rawCsvContent by mutableStateOf("")
+        private set
+
     val allHeaders: Set<String>
         get() = people.flatMap { it.items.map { i -> i.header } }.toSet()
 
@@ -48,24 +51,23 @@ class MainViewModel : ViewModel() {
     fun loadCsvFromUri(context: Context, uri: Uri) {
         val inputStream = context.contentResolver.openInputStream(uri)
         inputStream?.use { stream ->
-            applyParseResult(CsvParser.parse(stream))
+            rawCsvContent = stream.bufferedReader().readText()
+            applyParseResult(CsvParser.parseFromString(rawCsvContent))
         }
         saveState(context)
     }
 
     fun loadCsvFromFile(file: File): Boolean {
         if (!file.exists()) return false
-        file.inputStream().use { stream ->
-            applyParseResult(CsvParser.parse(stream))
-        }
+        rawCsvContent = file.readText()
+        applyParseResult(CsvParser.parseFromString(rawCsvContent))
         return people.isNotEmpty()
     }
 
     fun loadSampleData(context: Context) {
         val inputStream = context.assets.open("amap_sample.csv")
-        inputStream.use { stream ->
-            applyParseResult(CsvParser.parse(stream))
-        }
+        rawCsvContent = inputStream.bufferedReader().readText()
+        applyParseResult(CsvParser.parseFromString(rawCsvContent))
     }
 
     fun toggleShowDone() {
@@ -121,6 +123,9 @@ class MainViewModel : ViewModel() {
             .putString("emptyHeaders", emptyHeaders.joinToString(","))
             .putString("headerlessInfo", headerlessJson)
             .apply()
+        context.openFileOutput("raw.csv", Context.MODE_PRIVATE).use {
+            it.write(rawCsvContent.toByteArray())
+        }
     }
 
     fun restoreState(context: Context): Boolean {
@@ -144,6 +149,8 @@ class MainViewModel : ViewModel() {
             val entries: List<HeaderlessEntry> = gson.fromJson(savedHeaderlessJson, entryType)
             headerlessInfo = entries.map { it.name to it.value }
         }
+        val rawFile = File(context.filesDir, "raw.csv")
+        if (rawFile.exists()) rawCsvContent = rawFile.readText()
         return true
     }
 

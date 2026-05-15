@@ -13,6 +13,38 @@ object CsvParser {
 
     fun parse(inputStream: InputStream): CsvParseResult {
         val scanner = Scanner(inputStream)
+        return parseFromScanner(scanner)
+    }
+
+    fun parseRawTable(text: String): List<List<String>> {
+        val scanner = Scanner(text)
+        val rows = mutableListOf<List<String>>()
+        var pending = StringBuilder()
+
+        while (scanner.hasNextLine()) {
+            val rawLine = scanner.nextLine()
+            pending.append(rawLine).append('\n')
+
+            val line = pending.toString().trimEnd('\n')
+            if (!isQuotedComplete(line)) continue
+
+            val trimmed = line.trim()
+            pending = StringBuilder()
+
+            if (trimmed.isBlank()) continue
+
+            rows.add(parseCsvLine(trimmed).map { it.trim().replace('\n', ' ') })
+        }
+        scanner.close()
+        return rows
+    }
+
+    fun parseFromString(text: String): CsvParseResult {
+        val scanner = Scanner(text)
+        return parseFromScanner(scanner)
+    }
+
+    private fun parseFromScanner(scanner: Scanner): CsvParseResult {
         val people = mutableListOf<Person>()
         val headersWithData = mutableSetOf<String>()
         val headerlessInfo = mutableListOf<Pair<String, String>>()

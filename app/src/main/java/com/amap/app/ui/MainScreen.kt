@@ -1,18 +1,19 @@
 package com.amap.app.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -36,6 +37,8 @@ fun MainScreen(
     var showFilterDialog by remember { mutableStateOf(false) }
     var showHelpDialog by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
+    var showCsvTableDialog by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
     var quickMode by remember { mutableStateOf(false) }
     val visiblePeople by remember { derivedStateOf { viewModel.visiblePeople } }
     val enabledHeaders = viewModel.enabledHeaders
@@ -79,16 +82,49 @@ fun MainScreen(
         )
     }
 
+    if (showCsvTableDialog) {
+        CsvTableDialog(
+            rawCsvContent = viewModel.rawCsvContent,
+            onDismiss = { showCsvTableDialog = false }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    Row(modifier = Modifier.padding(start = 4.dp)) {
-                        IconButton(onClick = onReimport) {
-                            Icon(Icons.Default.FileOpen, contentDescription = "Charger un CSV")
+                    Box(modifier = Modifier.padding(start = 4.dp)) {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Menu")
                         }
-                        IconButton(onClick = { showResetDialog = true }) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Tout réinitialiser")
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Charger un fichier CSV") },
+                                onClick = {
+                                    showMenu = false
+                                    onReimport()
+                                },
+                                leadingIcon = { Icon(Icons.Default.CheckCircle, contentDescription = null) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Voir le fichier de distribution") },
+                                onClick = {
+                                    showMenu = false
+                                    showCsvTableDialog = true
+                                },
+                                leadingIcon = { Icon(Icons.Default.CheckCircle, contentDescription = null) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Tout réinitialiser") },
+                                onClick = {
+                                    showMenu = false
+                                    showResetDialog = true
+                                },
+                                leadingIcon = { Icon(Icons.Default.CheckCircle, contentDescription = null) }
+                            )
                         }
                     }
                 },
@@ -223,18 +259,60 @@ private fun InfoDialog(
                 if (emptyHeaders.isNotEmpty() && headerlessInfo.isNotEmpty()) {
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 }
-                headerlessInfo.forEach { (name, value) ->
-                    Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                        Text(
-                            text = name,
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = value,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                headerlessInfo.forEach { (_, value) ->
+                    Text(
+                        text = value,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Fermer") }
+        }
+    )
+}
+
+@Composable
+private fun CsvTableDialog(rawCsvContent: String, onDismiss: () -> Unit) {
+    val rows = remember(rawCsvContent) {
+        if (rawCsvContent.isBlank()) emptyList()
+        else com.amap.app.model.CsvParser.parseRawTable(rawCsvContent)
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Fichier de distribution") },
+        text = {
+            if (rows.isEmpty()) {
+                Text("Aucune donnée disponible.", style = MaterialTheme.typography.bodyMedium)
+            } else {
+                Box(modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                    Column {
+                        rows.forEachIndexed { i, row ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 2.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                row.forEach { cell ->
+                                    Text(
+                                        text = cell,
+                                        style = if (i == 0) MaterialTheme.typography.titleSmall
+                                                else MaterialTheme.typography.bodySmall,
+                                        color = if (i == 0) MaterialTheme.colorScheme.primary
+                                                else MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.widthIn(max = 120.dp)
+                                    )
+                                }
+                            }
+                            if (i == 0) {
+                                HorizontalDivider()
+                            }
+                        }
                     }
                 }
             }
@@ -252,8 +330,7 @@ private fun HelpDialog(onDismiss: () -> Unit) {
         title = { Text("Aide") },
         text = {
             Column {
-                HelpItem(Icons.Default.FileOpen, "Charger un fichier CSV")
-                HelpItem(Icons.Default.Refresh, "Tout réinitialiser — effacer les coches et validations")
+                HelpItem(Icons.Default.MoreVert, "Menu — charger un CSV, voir le fichier, réinitialiser")
                 HelpItem(Icons.Default.CheckBoxOutlineBlank, "Mode validation rapide — valider les personnes directement depuis la liste")
                 HelpItem(Icons.Default.FilterList, "Filtrer les colonnes — afficher/masquer des articles")
                 HelpItem(Icons.Default.Visibility, "Afficher ou cacher les personnes déjà validées")
