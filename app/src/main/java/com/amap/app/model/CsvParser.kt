@@ -3,11 +3,19 @@ package com.amap.app.model
 import java.io.InputStream
 import java.util.Scanner
 
+data class CsvParseResult(
+    val people: List<Person>,
+    val emptyHeaders: List<String>,
+    val headerlessInfo: List<Pair<String, String>>
+)
+
 object CsvParser {
 
-    fun parse(inputStream: InputStream): List<Person> {
+    fun parse(inputStream: InputStream): CsvParseResult {
         val scanner = Scanner(inputStream)
         val people = mutableListOf<Person>()
+        val headersWithData = mutableSetOf<String>()
+        val headerlessInfo = mutableListOf<Pair<String, String>>()
         var pending = StringBuilder()
         var headers: List<String>? = null
 
@@ -27,26 +35,41 @@ object CsvParser {
             if (parts.size < 2) continue
 
             if (headers == null) {
-                headers = parts.map { it.trim() }
+                headers = parts.map { it.trim().replace('\n', ' ') }
                 continue
             }
 
             val name = parts.first().trim()
             if (name.isBlank()) continue
 
-            val items = parts.drop(1)
+            val allItems = parts.drop(1)
                 .mapIndexed { index, value ->
-                    val header = headers.getOrElse(index + 1) { "" }.trim()
-                    Item(header = header, value = value.trim())
+                    val header = headers.getOrElse(index + 1) { "" }
+                    Item(header = header, value = value.trim().replace('\n', ' '))
                 }
-                .filter { it.value.isNotBlank() && it.header.isNotBlank() }
+
+            for (item in allItems) {
+                if (item.value.isNotBlank() && item.header.isNotBlank()) {
+                    headersWithData.add(item.header)
+                }
+            }
+
+            for (item in allItems) {
+                if (item.header.isBlank() && item.value.isNotBlank()) {
+                    headerlessInfo.add(name to item.value)
+                }
+            }
+
+            val items = allItems.filter { it.value.isNotBlank() && it.header.isNotBlank() && !it.header.equals("Cotis", ignoreCase = true) }
 
             if (items.isNotEmpty()) {
                 people.add(Person(name = name, items = items))
             }
         }
         scanner.close()
-        return people
+
+        val emptyHeaders = headers?.filter { it.isNotBlank() && it !in headersWithData } ?: emptyList()
+        return CsvParseResult(people, emptyHeaders, headerlessInfo)
     }
 
     private fun isQuotedComplete(line: String): Boolean {

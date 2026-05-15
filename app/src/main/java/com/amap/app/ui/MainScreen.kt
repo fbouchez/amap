@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -34,6 +35,7 @@ fun MainScreen(
     var showResetDialog by remember { mutableStateOf(false) }
     var showFilterDialog by remember { mutableStateOf(false) }
     var showHelpDialog by remember { mutableStateOf(false) }
+    var showInfoDialog by remember { mutableStateOf(false) }
     var quickMode by remember { mutableStateOf(false) }
     val visiblePeople by remember { derivedStateOf { viewModel.visiblePeople } }
     val enabledHeaders = viewModel.enabledHeaders
@@ -67,6 +69,14 @@ fun MainScreen(
 
     if (showHelpDialog) {
         HelpDialog(onDismiss = { showHelpDialog = false })
+    }
+
+    if (showInfoDialog) {
+        InfoDialog(
+            emptyHeaders = viewModel.emptyHeaders,
+            headerlessInfo = viewModel.headerlessInfo,
+            onDismiss = { showInfoDialog = false }
+        )
     }
 
     Scaffold(
@@ -111,6 +121,9 @@ fun MainScreen(
                 },
                 actions = {
                     Row(modifier = Modifier.padding(end = 4.dp)) {
+                        IconButton(onClick = { showInfoDialog = true }) {
+                            Icon(Icons.Default.Info, contentDescription = "Informations")
+                        }
                         IconButton(onClick = { showHelpDialog = true }) {
                             Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = "Aide")
                         }
@@ -185,6 +198,54 @@ private fun FilterDialog(
 }
 
 @Composable
+private fun InfoDialog(
+    emptyHeaders: List<String>,
+    headerlessInfo: List<Pair<String, String>>,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Informations") },
+        text = {
+            Column {
+                if (emptyHeaders.isEmpty() && headerlessInfo.isEmpty()) {
+                    Text("Aucune information supplémentaire.", style = MaterialTheme.typography.bodyMedium)
+                }
+                emptyHeaders.forEach { header ->
+                    Row(modifier = Modifier.padding(vertical = 4.dp)) {
+                        Text(
+                            text = header,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+                if (emptyHeaders.isNotEmpty() && headerlessInfo.isNotEmpty()) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                }
+                headerlessInfo.forEach { (name, value) ->
+                    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                        Text(
+                            text = name,
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = value,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Fermer") }
+        }
+    )
+}
+
+@Composable
 private fun HelpDialog(onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -196,6 +257,7 @@ private fun HelpDialog(onDismiss: () -> Unit) {
                 HelpItem(Icons.Default.CheckBoxOutlineBlank, "Mode validation rapide — valider les personnes directement depuis la liste")
                 HelpItem(Icons.Default.FilterList, "Filtrer les colonnes — afficher/masquer des articles")
                 HelpItem(Icons.Default.Visibility, "Afficher ou cacher les personnes déjà validées")
+                HelpItem(Icons.Default.Info, "Informations générales (code entrée, téléphones...)")
                 HelpItem(Icons.AutoMirrored.Filled.HelpOutline, "Aide — cette fenêtre")
             }
         },
