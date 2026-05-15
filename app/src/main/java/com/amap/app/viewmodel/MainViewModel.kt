@@ -21,6 +21,12 @@ class MainViewModel : ViewModel() {
     var showDone by mutableStateOf(false)
         private set
 
+    var enabledHeaders by mutableStateOf<Set<String>>(emptySet())
+        private set
+
+    val allHeaders: Set<String>
+        get() = people.flatMap { it.items.map { i -> i.header } }.toSet()
+
     val visiblePeople: List<Person>
         get() = if (showDone) people else people.filter { !it.isDone }
 
@@ -30,6 +36,7 @@ class MainViewModel : ViewModel() {
             people.clear()
             people.addAll(CsvParser.parse(stream))
         }
+        initEnabledHeaders()
         saveState(context)
     }
 
@@ -39,6 +46,7 @@ class MainViewModel : ViewModel() {
             people.clear()
             people.addAll(CsvParser.parse(stream))
         }
+        if (people.isNotEmpty()) initEnabledHeaders()
         return people.isNotEmpty()
     }
 
@@ -48,10 +56,19 @@ class MainViewModel : ViewModel() {
             people.clear()
             people.addAll(CsvParser.parse(stream))
         }
+        initEnabledHeaders()
     }
 
     fun toggleShowDone() {
         showDone = !showDone
+    }
+
+    fun toggleColumn(header: String) {
+        enabledHeaders = if (header in enabledHeaders) enabledHeaders - header else enabledHeaders + header
+    }
+
+    private fun initEnabledHeaders() {
+        enabledHeaders = allHeaders.filter { !it.equals("Cotis", ignoreCase = true) }.toSet()
     }
 
     fun toggleItem(person: Person, index: Int) {
@@ -87,15 +104,16 @@ class MainViewModel : ViewModel() {
         val json = gson.toJson(people.map {
             SerializablePerson(it.name, it.items, it.checkedItems.toList(), it.isDone)
         })
-        context.getSharedPreferences("amap", Context.MODE_PRIVATE)
-            .edit()
+        val prefs = context.getSharedPreferences("amap", Context.MODE_PRIVATE)
+        prefs.edit()
             .putString("state", json)
+            .putString("enabledHeaders", enabledHeaders.joinToString(","))
             .apply()
     }
 
     fun restoreState(context: Context): Boolean {
-        val json = context.getSharedPreferences("amap", Context.MODE_PRIVATE)
-            .getString("state", null) ?: return false
+        val prefs = context.getSharedPreferences("amap", Context.MODE_PRIVATE)
+        val json = prefs.getString("state", null) ?: return false
         val gson = Gson()
         val type = object : TypeToken<List<SerializablePerson>>() {}.type
         val saved: List<SerializablePerson> = gson.fromJson(json, type)
@@ -103,6 +121,9 @@ class MainViewModel : ViewModel() {
         people.addAll(saved.map {
             Person(it.name, it.items.map { i -> Item(i.header, i.value) }, it.checkedItems.toSet(), it.isDone)
         })
+        val savedHeaders = prefs.getString("enabledHeaders", null)
+        enabledHeaders = if (savedHeaders != null) savedHeaders.split(",").filter { it.isNotEmpty() }.toSet()
+            else allHeaders.filter { !it.equals("Cotis", ignoreCase = true) }.toSet()
         return true
     }
 

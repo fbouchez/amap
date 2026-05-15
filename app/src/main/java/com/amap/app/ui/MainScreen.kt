@@ -9,6 +9,8 @@ import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.FileOpen
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -29,8 +31,12 @@ fun MainScreen(
     onReimport: () -> Unit
 ) {
     var showResetDialog by remember { mutableStateOf(false) }
+    var showFilterDialog by remember { mutableStateOf(false) }
+    var showHelpDialog by remember { mutableStateOf(false) }
     var quickMode by remember { mutableStateOf(false) }
     val visiblePeople by remember { derivedStateOf { viewModel.visiblePeople } }
+    val enabledHeaders = viewModel.enabledHeaders
+    val allHeaders by remember { derivedStateOf { viewModel.allHeaders } }
 
     if (showResetDialog) {
         AlertDialog(
@@ -49,6 +55,19 @@ fun MainScreen(
         )
     }
 
+    if (showFilterDialog) {
+        FilterDialog(
+            allHeaders = allHeaders,
+            enabledHeaders = enabledHeaders,
+            onToggle = { viewModel.toggleColumn(it) },
+            onDismiss = { showFilterDialog = false }
+        )
+    }
+
+    if (showHelpDialog) {
+        HelpDialog(onDismiss = { showHelpDialog = false })
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -59,6 +78,9 @@ fun MainScreen(
                             if (quickMode) Icons.Default.CheckBox else Icons.Default.CheckBoxOutlineBlank,
                             contentDescription = if (quickMode) "Quitter le mode validation rapide" else "Mode validation rapide"
                         )
+                    }
+                    IconButton(onClick = { showFilterDialog = true }) {
+                        Icon(Icons.Default.FilterList, contentDescription = "Filtrer les colonnes")
                     }
                     IconButton(onClick = onReimport) {
                         Icon(Icons.Default.FileOpen, contentDescription = "Charger un CSV")
@@ -72,6 +94,9 @@ fun MainScreen(
                     }
                     IconButton(onClick = { showResetDialog = true }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Tout réinitialiser")
+                    }
+                    IconButton(onClick = { showHelpDialog = true }) {
+                        Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = "Aide")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -95,7 +120,8 @@ fun MainScreen(
                     onQuickToggle = {
                         if (person.isDone) viewModel.unmarkDone(person)
                         else viewModel.markDone(person)
-                    }
+                    },
+                    enabledHeaders = enabledHeaders
                 )
             }
         }
@@ -103,7 +129,97 @@ fun MainScreen(
 }
 
 @Composable
-fun PersonRow(person: Person, onClick: () -> Unit, quickMode: Boolean = false, onQuickToggle: () -> Unit = {}) {
+private fun FilterDialog(
+    allHeaders: Set<String>,
+    enabledHeaders: Set<String>,
+    onToggle: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Filtrer les colonnes") },
+        text = {
+            Column {
+                allHeaders.sorted().forEach { header ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onToggle(header) }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = if (header in enabledHeaders)
+                                Icons.Default.CheckBox else Icons.Default.CheckBoxOutlineBlank,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(header, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Fermer") }
+        }
+    )
+}
+
+@Composable
+private fun HelpDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Aide") },
+        text = {
+            Column {
+                HelpItem("[\u2611]", "Mode validation rapide — valider les personnes directement depuis la liste")
+                HelpItem("[\u2630]", "Filtrer les colonnes — afficher/masquer des articles")
+                HelpItem("[  \u00d7  ]", "Charger un fichier CSV")
+                HelpItem("[\u25c9]", "Afficher ou cacher les personnes déjà validées")
+                HelpItem("[\u21bb]", "Tout réinitialiser — effacer les coches et validations")
+                HelpItem("[  ?  ]", "Aide — cette fenêtre")
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Fermer") }
+        }
+    )
+}
+
+@Composable
+private fun HelpItem(icon: String, description: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Text(
+            text = icon,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = description,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+@Composable
+fun PersonRow(
+    person: Person,
+    onClick: () -> Unit,
+    quickMode: Boolean = false,
+    onQuickToggle: () -> Unit = {},
+    enabledHeaders: Set<String> = emptySet()
+) {
+    val totalVisible = person.items.count { it.header in enabledHeaders }
+    val checkedVisible = person.checkedItems.count { person.items[it].header in enabledHeaders }
+
     Card(
         onClick = onClick,
         modifier = Modifier
@@ -153,15 +269,12 @@ fun PersonRow(person: Person, onClick: () -> Unit, quickMode: Boolean = false, o
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
                 )
-            } else {
-                val checkedCount = person.checkedItems.size
-                if (checkedCount > 0) {
-                    Text(
-                        text = "$checkedCount/${person.items.size}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
+            } else if (checkedVisible > 0) {
+                Text(
+                    text = "$checkedVisible/$totalVisible",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
         }
     }

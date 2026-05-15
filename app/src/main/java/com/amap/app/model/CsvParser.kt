@@ -39,7 +39,7 @@ object CsvParser {
                     val header = headers.getOrElse(index + 1) { "" }.trim()
                     Item(header = header, value = value.trim())
                 }
-                .filter { it.value.isNotBlank() && it.header.isNotBlank() && !it.header.equals("Cotis", ignoreCase = true) }
+                .filter { it.value.isNotBlank() && it.header.isNotBlank() }
 
             if (items.isNotEmpty()) {
                 people.add(Person(name = name, items = items))

@@ -25,14 +25,20 @@ fun DetailScreen(
     onBack: () -> Unit
 ) {
     var showConfirm by remember { mutableStateOf(false) }
+    val enabledHeaders = viewModel.enabledHeaders
+    val visibleItems = remember(person, enabledHeaders) {
+        person.items.withIndex().filter { (_, item) -> item.header in enabledHeaders }
+    }
+    val visibleCount = visibleItems.size
     val effectiveChecked = if (person.isDone) person.items.indices.toSet() else person.checkedItems
+    val checkedVisible = visibleItems.count { (i, _) -> i in effectiveChecked }
 
     if (showConfirm) {
         AlertDialog(
             onDismissRequest = { showConfirm = false },
             title = { Text("Valider ${person.name} ?") },
             text = {
-                val remaining = person.items.indices.count { it !in person.checkedItems }
+                val remaining = visibleCount - checkedVisible
                 Text("$remaining article(s) non cochés seront marqués comme non pris.")
             },
             confirmButton = {
@@ -59,7 +65,7 @@ fun DetailScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = {
-                        if (!person.isDone && person.checkedItems.size == person.items.size) {
+                        if (!person.isDone && checkedVisible == visibleCount) {
                             viewModel.markDone(person)
                         }
                         onBack()
@@ -94,7 +100,7 @@ fun DetailScreen(
                 } else {
                     Button(
                         onClick = {
-                            if (person.checkedItems.size == person.items.size) {
+                            if (checkedVisible == visibleCount) {
                                 viewModel.markDone(person)
                                 onBack()
                             } else {
@@ -111,10 +117,10 @@ fun DetailScreen(
                         Icon(Icons.Default.CheckCircle, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            if (person.checkedItems.size == person.items.size)
+                            if (checkedVisible == visibleCount)
                                 "Valider — tout pris !"
                             else
-                                "Valider (${person.checkedItems.size}/${person.items.size})"
+                                "Valider ($checkedVisible/$visibleCount)"
                         )
                     }
                 }
@@ -133,7 +139,7 @@ fun DetailScreen(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            person.items.forEachIndexed { index, item ->
+            visibleItems.forEach { (index, item) ->
                 val checked = index in effectiveChecked
                 Card(
                     onClick = {
