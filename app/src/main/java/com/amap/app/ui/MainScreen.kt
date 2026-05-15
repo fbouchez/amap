@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Info
@@ -27,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.amap.app.model.Person
@@ -46,6 +48,15 @@ fun MainScreen(
     var showCsvTableDialog by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var quickMode by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+
+    LaunchedEffect(viewModel.downloadError) {
+        viewModel.downloadError?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearDownloadError()
+        }
+    }
     val visiblePeople by remember { derivedStateOf { viewModel.visiblePeople } }
     val enabledHeaders = viewModel.enabledHeaders
     val allHeaders by remember { derivedStateOf { viewModel.allHeaders } }
@@ -96,6 +107,7 @@ fun MainScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 navigationIcon = {
@@ -122,6 +134,25 @@ fun MainScreen(
                                     showCsvTableDialog = true
                                 },
                                 leadingIcon = { Icon(Icons.Default.Description, contentDescription = null) }
+                            )
+                            DropdownMenuItem(
+                                text = {
+                                    Row {
+                                        Text(if (viewModel.isDownloading) "Téléchargement…" else "Télécharger depuis Google Sheets")
+                                        if (viewModel.isDownloading) {
+                                            Spacer(Modifier.width(8.dp))
+                                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                        }
+                                    }
+                                },
+                                onClick = {
+                                    if (!viewModel.isDownloading) {
+                                        showMenu = false
+                                        viewModel.downloadFromGoogleSheets(context)
+                                    }
+                                },
+                                enabled = !viewModel.isDownloading,
+                                leadingIcon = { Icon(Icons.Default.Download, contentDescription = null) }
                             )
                             DropdownMenuItem(
                                 text = { Text("Tout réinitialiser") },
@@ -364,7 +395,7 @@ private fun HelpDialog(onDismiss: () -> Unit) {
         title = { Text("Aide") },
         text = {
             Column {
-                HelpItem(Icons.Default.MoreVert, "Menu — charger un CSV, voir le fichier, réinitialiser")
+                HelpItem(Icons.Default.MoreVert, "Menu — charger un CSV, télécharger, voir le fichier, réinitialiser")
                 HelpItem(Icons.Default.CheckBoxOutlineBlank, "Mode validation rapide — valider les personnes directement depuis la liste")
                 HelpItem(Icons.Default.FilterList, "Filtrer les colonnes — afficher/masquer des articles")
                 HelpItem(Icons.Default.Visibility, "Afficher ou cacher les personnes déjà validées")

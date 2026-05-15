@@ -7,13 +7,19 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.amap.app.model.CsvParser
 import com.amap.app.model.CsvParseResult
 import com.amap.app.model.Item
 import com.amap.app.model.Person
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
 
 class MainViewModel : ViewModel() {
 
@@ -32,6 +38,12 @@ class MainViewModel : ViewModel() {
         private set
 
     var rawCsvContent by mutableStateOf("")
+        private set
+
+    var isDownloading by mutableStateOf(false)
+        private set
+
+    var downloadError by mutableStateOf<String?>(null)
         private set
 
     val allHeaders: Set<String>
@@ -68,6 +80,40 @@ class MainViewModel : ViewModel() {
         val inputStream = context.assets.open("amap_sample.csv")
         rawCsvContent = inputStream.bufferedReader().readText()
         applyParseResult(CsvParser.parseFromString(rawCsvContent))
+    }
+
+    private val googleSheetsUrl = "https://docs.google.com/spreadsheets/d/1JJHBpxk37C8hAU1xSNGj9R4-GuwEdkXtAy22MuCjvTc/export?format=csv"
+
+    fun downloadFromGoogleSheets(context: Context) {
+        if (isDownloading) return
+        isDownloading = true
+        downloadError = null
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val url = URL(googleSheetsUrl)
+                val connection = url.openConnection() as HttpURLConnection
+                connection.connectTimeout = 15000
+                connection.readTimeout = 15000
+                connection.instanceFollowRedirects = true
+                val text = connection.inputStream.bufferedReader().readText()
+                if (text.isBlank()) throw Exception("Fichier vide")
+                withContext(Dispatchers.Main) {
+                    rawCsvContent = text
+                    applyParseResult(CsvParser.parseFromString(text))
+                    saveState(context)
+                    isDownloading = false
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    downloadError = "Échec du téléchargement : ${e.message ?: "erreur inconnue"}"
+                    isDownloading = false
+                }
+            }
+        }
+    }
+
+    fun clearDownloadError() {
+        downloadError = null
     }
 
     fun toggleShowDone() {
