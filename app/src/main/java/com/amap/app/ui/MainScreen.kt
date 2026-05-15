@@ -191,11 +191,11 @@ private fun HelpDialog(onDismiss: () -> Unit) {
         title = { Text("Aide") },
         text = {
             Column {
+                HelpItem(Icons.Default.FileOpen, "Charger un fichier CSV")
+                HelpItem(Icons.Default.Refresh, "Tout réinitialiser — effacer les coches et validations")
                 HelpItem(Icons.Default.CheckBoxOutlineBlank, "Mode validation rapide — valider les personnes directement depuis la liste")
                 HelpItem(Icons.Default.FilterList, "Filtrer les colonnes — afficher/masquer des articles")
-                HelpItem(Icons.Default.FileOpen, "Charger un fichier CSV")
                 HelpItem(Icons.Default.Visibility, "Afficher ou cacher les personnes déjà validées")
-                HelpItem(Icons.Default.Refresh, "Tout réinitialiser — effacer les coches et validations")
                 HelpItem(Icons.AutoMirrored.Filled.HelpOutline, "Aide — cette fenêtre")
             }
         },
