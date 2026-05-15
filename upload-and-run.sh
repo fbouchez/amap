@@ -6,13 +6,33 @@ APK="$DIR/app/build/outputs/apk/debug/app-debug.apk"
 CSV="$DIR/current.csv"
 PACKAGE="com.amap.app"
 
-# Check if any device is connected
-DEVICE=$(adb devices | grep -v "List of devices attached" | grep -v "^$" | grep "device$" | head -1 | awk '{print $1}' || true)
+# Check connected devices
+DEVICES=$(adb devices | grep -v "List of devices attached" | grep -v "^$" | grep "device$" | awk '{print $1}' || true)
+COUNT=$(echo "$DEVICES" | grep -c . || true)
 
-if [ -z "$DEVICE" ]; then
+if [ "$COUNT" -eq 0 ]; then
     echo "Aucun appareil connecté."
     echo "Branche ton téléphone et réessaye."
     exit 1
+fi
+
+if [ "$COUNT" -eq 1 ]; then
+    DEVICE="$DEVICES"
+else
+    echo "Plusieurs appareils détectés :"
+    i=1
+    while IFS= read -r d; do
+        echo "  $i) $d"
+        i=$((i + 1))
+    done <<< "$DEVICES"
+    echo ""
+    echo -n "Choisis un appareil (1-$COUNT) : "
+    read -r CHOICE
+    DEVICE=$(echo "$DEVICES" | sed -n "${CHOICE}p")
+    if [ -z "$DEVICE" ]; then
+        echo "Choix invalide."
+        exit 1
+    fi
 fi
 
 echo "=== Build APK ==="

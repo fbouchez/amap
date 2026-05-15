@@ -1,9 +1,12 @@
 package com.amap.app.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckBox
+import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.Refresh
@@ -26,6 +29,7 @@ fun MainScreen(
     onReimport: () -> Unit
 ) {
     var showResetDialog by remember { mutableStateOf(false) }
+    var quickMode by remember { mutableStateOf(false) }
     val visiblePeople by remember { derivedStateOf { viewModel.visiblePeople } }
 
     if (showResetDialog) {
@@ -50,6 +54,12 @@ fun MainScreen(
             TopAppBar(
                 title = { Text("AMAP Distribution") },
                 actions = {
+                    IconButton(onClick = { quickMode = !quickMode }) {
+                        Icon(
+                            if (quickMode) Icons.Default.CheckBox else Icons.Default.CheckBoxOutlineBlank,
+                            contentDescription = if (quickMode) "Quitter le mode validation rapide" else "Mode validation rapide"
+                        )
+                    }
                     IconButton(onClick = onReimport) {
                         Icon(Icons.Default.FileOpen, contentDescription = "Charger un CSV")
                     }
@@ -78,14 +88,22 @@ fun MainScreen(
                 .padding(padding)
         ) {
             items(visiblePeople, key = { it.name }) { person ->
-                PersonRow(person = person, onClick = { onPersonClick(person) })
+                PersonRow(
+                    person = person,
+                    onClick = { onPersonClick(person) },
+                    quickMode = quickMode,
+                    onQuickToggle = {
+                        if (person.isDone) viewModel.unmarkDone(person)
+                        else viewModel.markDone(person)
+                    }
+                )
             }
         }
     }
 }
 
 @Composable
-fun PersonRow(person: Person, onClick: () -> Unit) {
+fun PersonRow(person: Person, onClick: () -> Unit, quickMode: Boolean = false, onQuickToggle: () -> Unit = {}) {
     Card(
         onClick = onClick,
         modifier = Modifier
@@ -105,9 +123,24 @@ fun PersonRow(person: Person, onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
+            if (quickMode) {
+                Icon(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clickable(onClick = onQuickToggle),
+                    imageVector = if (person.isDone) Icons.Default.CheckBox else Icons.Default.CheckBoxOutlineBlank,
+                    contentDescription = null,
+                    tint = if (person.isDone)
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                    else
+                        MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(Modifier.width(12.dp))
+            }
             Text(
                 text = person.name,
                 style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f),
                 textDecoration = if (person.isDone) TextDecoration.LineThrough else TextDecoration.None,
                 color = if (person.isDone)
                     MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
