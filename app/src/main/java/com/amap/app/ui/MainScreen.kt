@@ -314,14 +314,13 @@ private fun CsvTableDialog(rawCsvContent: String, onDismiss: () -> Unit) {
                                     .padding(horizontal = 6.dp, vertical = 4.dp),
                                 contentAlignment = if (i == 0) Alignment.Center else Alignment.CenterStart
                             ) {
-                                Text(
-                                    text = row.getOrElse(0) { "" },
-                                    style = if (i == 0) MaterialTheme.typography.titleSmall
-                                            else MaterialTheme.typography.bodySmall,
-                                    color = if (i == 0) MaterialTheme.colorScheme.primary
-                                            else MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 1
-                                )
+                                        Text(
+                                            text = row.getOrElse(0) { "" },
+                                            style = if (i == 0) MaterialTheme.typography.titleSmall
+                                                    else MaterialTheme.typography.bodySmall,
+                                            color = if (i == 0) MaterialTheme.colorScheme.primary
+                                                    else MaterialTheme.colorScheme.onSurface
+                                        )
                             }
                             if (i == 0) HorizontalDivider()
                         }

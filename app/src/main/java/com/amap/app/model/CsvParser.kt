@@ -33,7 +33,7 @@ object CsvParser {
 
             if (trimmed.isBlank()) continue
 
-            rows.add(parseCsvLine(trimmed).map { it.trim().replace('\n', ' ') })
+            rows.add(parseCsvLine(trimmed).map { it.trim().replace('\r', ' ').replace('\n', ' ') })
         }
         scanner.close()
         return rows
@@ -67,7 +67,7 @@ object CsvParser {
             if (parts.size < 2) continue
 
             if (headers == null) {
-                headers = parts.map { it.trim().replace('\n', ' ') }
+                headers = parts.map { it.trim().replace('\r', ' ').replace('\n', ' ') }
                 continue
             }
 
@@ -77,7 +77,7 @@ object CsvParser {
             val allItems = parts.drop(1)
                 .mapIndexed { index, value ->
                     val header = headers.getOrElse(index + 1) { "" }
-                    Item(header = header, value = value.trim().replace('\n', ' '))
+                    Item(header = header, value = value.trim().replace('\r', ' ').replace('\n', ' '))
                 }
 
             for (item in allItems) {
