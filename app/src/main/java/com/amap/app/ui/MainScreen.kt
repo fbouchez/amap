@@ -5,12 +5,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -18,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.amap.app.model.Person
@@ -71,36 +72,53 @@ fun MainScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("AMAP Distribution") },
+                navigationIcon = {
+                    Row(modifier = Modifier.padding(start = 4.dp)) {
+                        IconButton(onClick = onReimport) {
+                            Icon(Icons.Default.FileOpen, contentDescription = "Charger un CSV")
+                        }
+                        IconButton(onClick = { showResetDialog = true }) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Tout réinitialiser")
+                        }
+                    }
+                },
+                title = {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = { quickMode = !quickMode }) {
+                            Icon(
+                                if (quickMode) Icons.Default.CheckBox else Icons.Default.CheckBoxOutlineBlank,
+                                contentDescription = if (quickMode) "Quitter le mode validation rapide" else "Mode validation rapide",
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
+                        IconButton(onClick = { showFilterDialog = true }) {
+                            Icon(Icons.Default.FilterList, contentDescription = "Filtrer les colonnes", tint = MaterialTheme.colorScheme.onPrimary)
+                        }
+                        IconButton(onClick = { viewModel.toggleShowDone() }) {
+                            Icon(
+                                if (viewModel.showDone) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = if (viewModel.showDone) "Cacher passés" else "Afficher passés",
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
+                    }
+                },
                 actions = {
-                    IconButton(onClick = { quickMode = !quickMode }) {
-                        Icon(
-                            if (quickMode) Icons.Default.CheckBox else Icons.Default.CheckBoxOutlineBlank,
-                            contentDescription = if (quickMode) "Quitter le mode validation rapide" else "Mode validation rapide"
-                        )
-                    }
-                    IconButton(onClick = { showFilterDialog = true }) {
-                        Icon(Icons.Default.FilterList, contentDescription = "Filtrer les colonnes")
-                    }
-                    IconButton(onClick = onReimport) {
-                        Icon(Icons.Default.FileOpen, contentDescription = "Charger un CSV")
-                    }
-                    IconButton(onClick = { viewModel.toggleShowDone() }) {
-                        Icon(
-                            if (viewModel.showDone) Icons.Default.VisibilityOff
-                            else Icons.Default.Visibility,
-                            contentDescription = if (viewModel.showDone) "Cacher passés" else "Afficher passés"
-                        )
-                    }
-                    IconButton(onClick = { showResetDialog = true }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Tout réinitialiser")
-                    }
-                    IconButton(onClick = { showHelpDialog = true }) {
-                        Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = "Aide")
+                    Row(modifier = Modifier.padding(end = 4.dp)) {
+                        IconButton(onClick = { showHelpDialog = true }) {
+                            Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = "Aide")
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     actionIconContentColor = MaterialTheme.colorScheme.onPrimary
                 )
@@ -173,12 +191,12 @@ private fun HelpDialog(onDismiss: () -> Unit) {
         title = { Text("Aide") },
         text = {
             Column {
-                HelpItem("[\u2611]", "Mode validation rapide — valider les personnes directement depuis la liste")
-                HelpItem("[\u2630]", "Filtrer les colonnes — afficher/masquer des articles")
-                HelpItem("[  \u00d7  ]", "Charger un fichier CSV")
-                HelpItem("[\u25c9]", "Afficher ou cacher les personnes déjà validées")
-                HelpItem("[\u21bb]", "Tout réinitialiser — effacer les coches et validations")
-                HelpItem("[  ?  ]", "Aide — cette fenêtre")
+                HelpItem(Icons.Default.CheckBoxOutlineBlank, "Mode validation rapide — valider les personnes directement depuis la liste")
+                HelpItem(Icons.Default.FilterList, "Filtrer les colonnes — afficher/masquer des articles")
+                HelpItem(Icons.Default.FileOpen, "Charger un fichier CSV")
+                HelpItem(Icons.Default.Visibility, "Afficher ou cacher les personnes déjà validées")
+                HelpItem(Icons.Default.Refresh, "Tout réinitialiser — effacer les coches et validations")
+                HelpItem(Icons.AutoMirrored.Filled.HelpOutline, "Aide — cette fenêtre")
             }
         },
         confirmButton = {
@@ -188,19 +206,20 @@ private fun HelpDialog(onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun HelpItem(icon: String, description: String) {
+private fun HelpItem(icon: ImageVector, description: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.Top
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = icon,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.primary
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(24.dp)
         )
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(12.dp))
         Text(
             text = description,
             style = MaterialTheme.typography.bodyMedium,
