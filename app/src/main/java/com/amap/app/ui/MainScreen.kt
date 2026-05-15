@@ -6,14 +6,17 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -107,7 +110,7 @@ fun MainScreen(
                                     showMenu = false
                                     onReimport()
                                 },
-                                leadingIcon = { Icon(Icons.Default.CheckCircle, contentDescription = null) }
+                                leadingIcon = { Icon(Icons.Default.FileOpen, contentDescription = null) }
                             )
                             DropdownMenuItem(
                                 text = { Text("Voir le fichier de distribution") },
@@ -115,7 +118,7 @@ fun MainScreen(
                                     showMenu = false
                                     showCsvTableDialog = true
                                 },
-                                leadingIcon = { Icon(Icons.Default.CheckCircle, contentDescription = null) }
+                                leadingIcon = { Icon(Icons.Default.Visibility, contentDescription = null) }
                             )
                             DropdownMenuItem(
                                 text = { Text("Tout réinitialiser") },
@@ -123,7 +126,7 @@ fun MainScreen(
                                     showMenu = false
                                     showResetDialog = true
                                 },
-                                leadingIcon = { Icon(Icons.Default.CheckCircle, contentDescription = null) }
+                                leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null) }
                             )
                         }
                     }
@@ -289,28 +292,42 @@ private fun CsvTableDialog(rawCsvContent: String, onDismiss: () -> Unit) {
             if (rows.isEmpty()) {
                 Text("Aucune donnée disponible.", style = MaterialTheme.typography.bodyMedium)
             } else {
-                Box(modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                val colCount = rows.maxOfOrNull { it.size } ?: 0
+                val colWidths = remember(rows) {
+                    List(colCount) { c ->
+                        val maxLen = rows.maxOf { r -> r.getOrElse(c) { "" }.length }
+                        (maxLen * 8).coerceIn(60, 200)
+                    }
+                }
+                Box(
+                    modifier = Modifier
+                        .horizontalScroll(rememberScrollState())
+                        .verticalScroll(rememberScrollState())
+                ) {
                     Column {
                         rows.forEachIndexed { i, row ->
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 2.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                modifier = Modifier.padding(vertical = 1.dp),
+                                horizontalArrangement = Arrangement.Start
                             ) {
-                                row.forEach { cell ->
-                                    Text(
-                                        text = cell,
-                                        style = if (i == 0) MaterialTheme.typography.titleSmall
-                                                else MaterialTheme.typography.bodySmall,
-                                        color = if (i == 0) MaterialTheme.colorScheme.primary
-                                                else MaterialTheme.colorScheme.onSurface,
-                                        modifier = Modifier.widthIn(max = 120.dp)
-                                    )
+                                for (c in 0 until colCount) {
+                                    Box(
+                                        modifier = Modifier.width(colWidths[c].dp),
+                                        contentAlignment = if (i == 0) Alignment.Center else Alignment.CenterStart
+                                    ) {
+                                        Text(
+                                            text = row.getOrElse(c) { "" },
+                                            style = if (i == 0) MaterialTheme.typography.titleSmall
+                                                    else MaterialTheme.typography.bodySmall,
+                                            color = if (i == 0) MaterialTheme.colorScheme.primary
+                                                    else MaterialTheme.colorScheme.onSurface,
+                                            maxLines = 1
+                                        )
+                                    }
                                 }
                             }
                             if (i == 0) {
-                                HorizontalDivider()
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
                             }
                         }
                     }
