@@ -302,58 +302,51 @@ private fun CsvTableDialog(rawCsvContent: String, onDismiss: () -> Unit) {
                         (maxLen * 8).coerceIn(60, 200)
                     }
                 }
+                val vScrollState = rememberScrollState()
+                val hScrollState = rememberScrollState()
                 val rowBg = Color(0xFFF5F5F5)
-                Row(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                    Column(modifier = Modifier.width(colWidths[0].dp)) {
-                        rows.forEachIndexed { i, row ->
+                val paddingMod = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
+                Column(modifier = Modifier.verticalScroll(vScrollState)) {
+                    rows.forEachIndexed { i, row ->
+                        Row(
+                            modifier = Modifier
+                                .heightIn(min = 28.dp)
+                                .background(if (i > 0 && i % 2 == 0) rowBg else Color.Transparent)
+                        ) {
                             Box(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(min = 28.dp)
-                                    .background(if (i > 0 && i % 2 == 0) rowBg else Color.Transparent)
-                                    .padding(horizontal = 6.dp, vertical = 4.dp),
+                                    .width(colWidths[0].dp)
+                                    .then(paddingMod),
                                 contentAlignment = if (i == 0) Alignment.Center else Alignment.CenterStart
                             ) {
+                                Text(
+                                    text = row.getOrElse(0) { "" },
+                                    style = if (i == 0) MaterialTheme.typography.titleSmall
+                                            else MaterialTheme.typography.bodySmall,
+                                    color = if (i == 0) MaterialTheme.colorScheme.primary
+                                            else MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            Row(modifier = Modifier.horizontalScroll(hScrollState)) {
+                                for (c in 1 until colCount) {
+                                    Box(
+                                        modifier = Modifier
+                                            .width(colWidths[c].dp)
+                                            .then(paddingMod),
+                                        contentAlignment = if (i == 0) Alignment.Center else Alignment.CenterStart
+                                    ) {
                                         Text(
-                                            text = row.getOrElse(0) { "" },
+                                            text = row.getOrElse(c) { "" },
                                             style = if (i == 0) MaterialTheme.typography.titleSmall
                                                     else MaterialTheme.typography.bodySmall,
                                             color = if (i == 0) MaterialTheme.colorScheme.primary
                                                     else MaterialTheme.colorScheme.onSurface
                                         )
-                            }
-                            if (i == 0) HorizontalDivider()
-                        }
-                    }
-                    Box(modifier = Modifier.horizontalScroll(rememberScrollState())) {
-                        Column {
-                            rows.forEachIndexed { i, row ->
-                                Row(
-                                    modifier = Modifier
-                                        .heightIn(min = 28.dp)
-                                        .background(if (i > 0 && i % 2 == 0) rowBg else Color.Transparent)
-                                ) {
-                                    for (c in 1 until colCount) {
-                                        Box(
-                                            modifier = Modifier
-                                                .width(colWidths[c].dp)
-                                                .padding(horizontal = 6.dp, vertical = 4.dp),
-                                            contentAlignment = if (i == 0) Alignment.Center else Alignment.CenterStart
-                                        ) {
-                                            Text(
-                                                text = row.getOrElse(c) { "" },
-                                                style = if (i == 0) MaterialTheme.typography.titleSmall
-                                                        else MaterialTheme.typography.bodySmall,
-                                                color = if (i == 0) MaterialTheme.colorScheme.primary
-                                                        else MaterialTheme.colorScheme.onSurface,
-                                                maxLines = 1
-                                            )
-                                        }
                                     }
                                 }
-                                if (i == 0) HorizontalDivider()
                             }
                         }
+                        if (i == 0) HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
                     }
                 }
             }
