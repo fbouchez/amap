@@ -1,6 +1,7 @@
 package com.amap.app.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,6 +13,7 @@ import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Info
@@ -23,6 +25,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -118,7 +121,7 @@ fun MainScreen(
                                     showMenu = false
                                     showCsvTableDialog = true
                                 },
-                                leadingIcon = { Icon(Icons.Default.Visibility, contentDescription = null) }
+                                leadingIcon = { Icon(Icons.Default.Description, contentDescription = null) }
                             )
                             DropdownMenuItem(
                                 text = { Text("Tout réinitialiser") },
@@ -299,35 +302,57 @@ private fun CsvTableDialog(rawCsvContent: String, onDismiss: () -> Unit) {
                         (maxLen * 8).coerceIn(60, 200)
                     }
                 }
-                Box(
-                    modifier = Modifier
-                        .horizontalScroll(rememberScrollState())
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    Column {
+                val rowBg = Color(0xFFF5F5F5)
+                Row(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    Column(modifier = Modifier.width(colWidths[0].dp)) {
                         rows.forEachIndexed { i, row ->
-                            Row(
-                                modifier = Modifier.padding(vertical = 1.dp),
-                                horizontalArrangement = Arrangement.Start
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 28.dp)
+                                    .background(if (i > 0 && i % 2 == 0) rowBg else Color.Transparent)
+                                    .padding(horizontal = 6.dp, vertical = 4.dp),
+                                contentAlignment = if (i == 0) Alignment.Center else Alignment.CenterStart
                             ) {
-                                for (c in 0 until colCount) {
-                                    Box(
-                                        modifier = Modifier.width(colWidths[c].dp),
-                                        contentAlignment = if (i == 0) Alignment.Center else Alignment.CenterStart
-                                    ) {
-                                        Text(
-                                            text = row.getOrElse(c) { "" },
-                                            style = if (i == 0) MaterialTheme.typography.titleSmall
-                                                    else MaterialTheme.typography.bodySmall,
-                                            color = if (i == 0) MaterialTheme.colorScheme.primary
-                                                    else MaterialTheme.colorScheme.onSurface,
-                                            maxLines = 1
-                                        )
+                                Text(
+                                    text = row.getOrElse(0) { "" },
+                                    style = if (i == 0) MaterialTheme.typography.titleSmall
+                                            else MaterialTheme.typography.bodySmall,
+                                    color = if (i == 0) MaterialTheme.colorScheme.primary
+                                            else MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1
+                                )
+                            }
+                            if (i == 0) HorizontalDivider()
+                        }
+                    }
+                    Box(modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                        Column {
+                            rows.forEachIndexed { i, row ->
+                                Row(
+                                    modifier = Modifier
+                                        .heightIn(min = 28.dp)
+                                        .background(if (i > 0 && i % 2 == 0) rowBg else Color.Transparent)
+                                ) {
+                                    for (c in 1 until colCount) {
+                                        Box(
+                                            modifier = Modifier
+                                                .width(colWidths[c].dp)
+                                                .padding(horizontal = 6.dp, vertical = 4.dp),
+                                            contentAlignment = if (i == 0) Alignment.Center else Alignment.CenterStart
+                                        ) {
+                                            Text(
+                                                text = row.getOrElse(c) { "" },
+                                                style = if (i == 0) MaterialTheme.typography.titleSmall
+                                                        else MaterialTheme.typography.bodySmall,
+                                                color = if (i == 0) MaterialTheme.colorScheme.primary
+                                                        else MaterialTheme.colorScheme.onSurface,
+                                                maxLines = 1
+                                            )
+                                        }
                                     }
                                 }
-                            }
-                            if (i == 0) {
-                                HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+                                if (i == 0) HorizontalDivider()
                             }
                         }
                     }
