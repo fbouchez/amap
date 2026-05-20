@@ -1,78 +1,260 @@
 # AMAP Distribution
 
-Application Android pour faciliter la distribution des paniers AMAP.
+Application Android pour gérer les distributions de paniers AMAP. Développée pour simplifier le suivi des commandes et des livraisons.
 
-## Fonctionnalités
+---
 
-- Import d'un fichier CSV (1ère colonne = noms, suivantes = articles à prendre)
-- Liste des personnes avec statut (pas encore venu / déjà servi)
-- Vue détaillée avec checklist des articles à prendre
-- Marquage « validé » quand tout est pris
-- Affichage des personnes déjà servies (grisées/barrées) avec bouton pour les masquer
-- Sauvegarde de l'état (coches, validations) entre les lancements
-- Auto-chargement du CSV poussé par `upload-and-run.sh`
+## ⚠️ À propos de cette application
 
-## Prérequis
+> **⚠️ Cette application a été entièrement générée par IA** (Mistral Vibe) à partir d'un prompt utilisateur. Elle est fonctionnelle mais n'a pas bénéficié d'une revue de code complète par des développeurs humains. Utilisez-la à vos risques et périls.
 
-- Android SDK dans `~/Installs/android`
-- Gradle dans `~/Installs/gradle/bin`
-- Tablette ou téléphone Android branché en USB (debug activé)
+---
 
-## Build
+## 📱 Fonctionnalités
+
+### Gestion des distributions
+- **Liste des membres** : Vue claire de tous les participants à la distribution
+- **Suivi en temps réel** : cochez les articles au fur et à mesure qu'ils sont remis
+- **Statut visuel** : Les personnes déjà servies sont grisées/barrées
+- **Masquage des servis** : Option pour ne voir que les personnes restantes
+
+### Import des données
+- **Fichier CSV** : Import depuis un fichier local sur l'appareil
+- **Google Sheets** : Téléchargement direct depuis un tableau Google Sheets partagé
+- **Format flexible** : Séparateurs `,` ou `;` supportés, avec gestion des champs vides
+
+### Synchronisation multi-appareils
+- **QR Codes** : Générez un QR code avec l'état actuel et scannez-le sur un autre appareil pour synchroniser les données
+- **Export/Import** : Sauvegarde et restauration de l'état entre sessions
+
+### Visualisation
+- **Vue tableau** : Visualisez le CSV brut dans un tableau
+- **Fiche détaillée** : Voir tous les articles d'une personne
+
+---
+
+## 🚀 Installation
+
+### Prérequis
+- Appareil Android (version 8.0 Oreo ou supérieure)
+- ~5 Mo d'espace de stockage
+
+### Méthode 1 : Installer l'APK fourni
+
+1. **Télécharger l'APK** : Récupérez le fichier `apk/amap-app-debug.apk` depuis ce dépôt
+2. **Activer les sources inconnues** : 
+   - Allez dans **Paramètres > Sécurité** (varie selon Android)
+   - Activez **"Sources inconnues"** ou **"Installation d'applications inconnues"**
+3. **Installer l'APK** : Ouvrez le fichier `.apk` avec un gestionnaire de fichiers et suivez les instructions
+
+### Méthode 2 : Build depuis les sources
 
 ```bash
+# Prérequis
+# - Android SDK (dossier configuré dans local.properties)
+# - Java JDK 17+
+
+# Builder l'APK
 ./build.sh
+
+# L'APK est généré dans : app/build/outputs/apk/debug/app-debug.apk
 ```
 
-## Upload sur l'appareil
+---
 
-```bash
-# Copier son fichier CSV dans le dossier
-cp /chemin/vers/distribution.csv current.csv
+## 📂 Préparation des données
 
-# Build + install + lancement
-./upload-and-run.sh
-```
+### Créer un fichier CSV
 
-Le script pousse automatiquement `current.csv` sur l'appareil via l'intent de lancement (encodé en base64). L'app le détecte au démarrage et charge les données.
-
-## Format CSV
-
-Séparateur `;` ou `,`. Support des guillemets et des champs multi-lignes.
+Créez un fichier CSV avec le format suivant :
 
 ```csv
-Nom;Article 1;Article 2;Article 3
-Alice;1 panier légumes;1 douzaine d'œufs;1 pain
-Bob;1 panier légumes;2 fromages;
+Nom,Article 1,Article 2,Article 3
+Alice,1 panier légumes,1 douzaine d'œufs,1 pain
+Bob,1 panier légumes,2 fromages,
+Claire,2 paniers légumes,,1 fromage de chèvre
 ```
 
-Les lignes commençant par `#` ou `//` sont ignorées. La première ligne (en-tête) est ignorée automatiquement.
+**Règles :**
+- Première colonne : **Noms** des membres (obligatoire)
+- Colonnes suivantes : Articles à distribuer
+- Les cellules vides sont ignorées
+- Les lignes commençant par `#` ou `//` sont ignorées (commentaires)
+- Séparateurs supportés : **virgule (`,`) ou point-virgule (`;`)**
 
-## Structure du projet
+> ⚠️ **Important** : Google Sheets exporte par défaut avec des virgules. Si vous utilisez des points-virgules, convertissez-les en virgules avant l'import.
+
+### Exemple de fichier
+
+Un fichier d'exemple (`example.csv`) est inclus dans l'application et utilisé par défaut au premier lancement.
+
+---
+
+## 🎯 Utilisation de l'application
+
+### Premier lancement
+
+1. **Ouvrez l'application**
+2. L'application charge automatiquement `example.csv` si aucun fichier n'a été importé
+3. Vous verrez la liste des membres avec leurs articles
+
+### Importer un fichier CSV
+
+**Depuis l'écran d'accueil :**
+1. Cliquez sur **"Charger un CSV"**
+2. Sélectionnez votre fichier dans le gestionnaire de fichiers
+3. L'application charge immédiatement les données
+
+### Télécharger depuis Google Sheets
+
+**Depuis l'écran d'accueil :**
+1. Cliquez sur **"Télécharger le tableau de distribution"**
+2. Attendez la fin du téléchargement (indiqué par un spinner)
+3. Les données sont automatiquement chargées
+
+> ⚙️ **Configuration** : L'URL du Google Sheet est préconfigurée. Pour changer, modifiez `googleSheetsUrl` dans `MainViewModel.kt`.
+
+### Gérer une distribution
+
+**Écran principal :**
+- **Cochez les articles** : Cliquez sur une case pour cocher/décocher un article
+- **Marquer comme servi** : Cochez tous les articles puis cliquez sur **"Valider"** (ou appui long sur la personne)
+- **Masquer les servis** : Activez le bouton **"Montrer terminés"** pour afficher/masquer les personnes déjà servies
+
+**Écran détaillé d'une personne :**
+- Cliquez sur un nom dans la liste
+- Vue complète de tous les articles de cette personne
+- Bouton de retour pour revenir à la liste
+
+### Synchronisation avec QR Code
+
+**Pour synchroniser entre deux appareils :**
+
+1. **Sur l'appareil source** (celui qui a les données à jour) :
+   - Dans l'écran principal, cliquez sur l'icône **QR Code** (en haut à droite)
+   - Sélectionnez **"Générer QR Code"**
+   - Montrez le QR code à l'autre appareil
+
+2. **Sur l'appareil cible** :
+   - Cliquez sur l'icône **QR Code**
+   - Sélectionnez **"Scanner QR Code"**
+   - Scannez le code de l'autre appareil
+   - Les données sont fusionnées automatiquement
+
+> ⚠️ **Note** : La synchronisation fusionne les données. Si un article est coché sur l'appareil source, il sera coché sur le cible. Le hash du CSV doit correspondre.
+
+### Visualiser le tableau
+
+1. Depuis l'écran principal, cliquez sur l'icône **Tableau** (en haut à droite)
+2. Vous voyez le CSV brut sous forme de tableau
+3. Utilisez le bouton **Retour** pour revenir
+
+---
+
+## 🔧 Configuration technique
+
+### Scripts utilitaires
+
+#### `upload-and-run.sh`
+
+Script pratique pour développer/tester l'application :
+
+```bash
+# Utilisation de base (avec l'appareil par défaut)
+./upload-and-run.sh
+
+# Avec un appareil spécifique (configuré dans ~/.adb-devices)
+./upload-and-run.sh mon-telephone
+
+# Le script :
+# 1. Build l'APK
+# 2. Installe sur l'appareil
+# 3. Pousse example.csv vers l'appareil via intent
+# 4. Lance l'application
+```
+
+**Fichier de configuration des appareils** (`~/.adb-devices`) :
+```
+mon-telephone  192.168.1.xxx:5555
+autre-appareil AB12CD34
+```
+
+---
+
+## 📁 Structure du projet
 
 ```
 amap-app/
-├── build.gradle.kts          # Projet Gradle
+├── README.md                    # Ce fichier
+├── .gitignore
+├── local.properties            # Configuration SDK (généré)
+├── build.gradle.kts            # Configuration Gradle du projet
 ├── settings.gradle.kts
-├── build.sh                  # Build
-├── upload-and-run.sh         # Build + install + lancement
-├── local.properties          # SDK path
-├── current.csv               # Données de distribution (ignoré par git)
+├── build.sh                    # Script de build
+├── upload-and-run.sh           # Script de déploiement
+├── example.csv                 # Fichier CSV d'exemple
+├── apk/                        # APKs générés
+│   └── amap-app-debug.apk      # Dernière version compilée
 └── app/
     ├── build.gradle.kts
-    └── src/main/
-        ├── AndroidManifest.xml
-        ├── assets/amap_sample.csv
-        ├── res/
-        └── java/com/amap/app/
-            ├── MainActivity.kt
-            ├── model/
-            │   ├── Person.kt
-            │   └── CsvParser.kt
-            ├── viewmodel/
-            │   └── MainViewModel.kt
-            └── ui/
-                ├── MainScreen.kt
-                ├── DetailScreen.kt
-                └── theme/Theme.kt
+    ├── src/main/
+    │   ├── AndroidManifest.xml
+    │   ├── assets/
+    │   │   └── example.csv      # CSV embarqué dans l'APK
+    │   ├── res/                # Ressources
+    │   └── java/com/amap/app/
+    │       ├── MainActivity.kt
+    │       ├── model/
+    │       │   ├── CsvParser.kt
+    │       │   ├── Item.kt
+    │       │   └── Person.kt
+    │       ├── viewmodel/
+    │       │   └── MainViewModel.kt
+    │       └── ui/
+    │           ├── CsvTableScreen.kt
+    │           ├── DetailScreen.kt
+    │           ├── HomeScreen.kt
+    │           ├── MainScreen.kt
+    │           ├── QrSyncDialog.kt
+    │           └── theme/
+    └── build/                  # Fichiers générés (ignoré par git)
 ```
+
+---
+
+## 🤝 Contribuer
+
+1. **Fork** le dépôt sur GitHub
+2. **Clone** votre fork
+3. **Créez une branche** pour votre fonctionnalité : `git checkout -b ma-nouvelle-fonctionnalité`
+4. **Commit** vos changements : `git commit -m "Ajout de ma fonctionnalité"`
+5. **Push** vers votre fork : `git push origin ma-nouvelle-fonctionnalité`
+6. **Ouvrez une Pull Request** depuis GitHub
+
+---
+
+## 🐛 Signaler un problème
+
+Ouvrez une **issue** sur GitHub avec :
+- Description du problème
+- Étapes pour reproduire
+- Capture d'écran si nécessaire
+- Version d'Android
+- Modèle de l'appareil
+
+---
+
+## 📄 Licence
+
+Cette application est fournie "en l'état" sans garantie d'aucune sorte. Vous êtes libre de l'utiliser, la modifier et la redistribuer.
+
+**Auteur initial** : Généré par Mistral Vibe (IA)
+**Mainteneur** : [À compléter]
+
+---
+
+## 📞 Contact
+
+Pour toute question concernant l'AMAP, contactez votre référent AMAP habituel.
+
+Pour les problèmes techniques liés à l'application, ouvrez une issue sur le dépôt GitHub.
