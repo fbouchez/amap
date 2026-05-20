@@ -15,17 +15,16 @@ Application Android pour gérer les distributions de paniers AMAP. Développée 
 ### Gestion des distributions
 - **Liste des membres** : Vue claire de tous les participants à la distribution
 - **Suivi en temps réel** : cochez les articles au fur et à mesure qu'ils sont remis
-- **Statut visuel** : Les personnes déjà servies sont grisées/barrées
-- **Masquage des servis** : Option pour ne voir que les personnes restantes
+- **Statut visuel** : Les personnes déjà servies sont grisées/barrées ou cachées
+- **Filtrage des articles** : Option pour masquer les articles qui ne sont pas 
+distribués systématiquement (viande, confiture...)
 
 ### Import des données
 - **Fichier CSV** : Import depuis un fichier local sur l'appareil
 - **Google Sheets** : Téléchargement direct depuis un tableau Google Sheets partagé
-- **Format flexible** : Séparateurs `,` ou `;` supportés, avec gestion des champs vides
 
 ### Synchronisation multi-appareils
 - **QR Codes** : Générez un QR code avec l'état actuel et scannez-le sur un autre appareil pour synchroniser les données
-- **Export/Import** : Sauvegarde et restauration de l'état entre sessions
 
 ### Visualisation
 - **Vue tableau** : Visualisez le CSV brut dans un tableau
@@ -64,6 +63,16 @@ Application Android pour gérer les distributions de paniers AMAP. Développée 
 
 ## 📂 Préparation des données
 
+### Récupérer un fichier CSV existant
+
+Le plus simple : utiliser le bouton "Télécharger le tableau de distribution" 
+(pour l'AMAP "Flanc de Coteau" à Seyssins: récupère directement depuis le 
+tableur partagé).
+
+Possiblilité de télécharger depuis un tableur partagé (dans google docs : menu Fichier > Télécharger > (.csv)).
+
+
+
 ### Créer un fichier CSV
 
 Créez un fichier CSV avec le format suivant :
@@ -82,7 +91,6 @@ Claire,2 paniers légumes,,1 fromage de chèvre
 - Les lignes commençant par `#` ou `//` sont ignorées (commentaires)
 - Séparateurs supportés : **virgule (`,`) ou point-virgule (`;`)**
 
-> ⚠️ **Important** : Google Sheets exporte par défaut avec des virgules. Si vous utilisez des points-virgules, convertissez-les en virgules avant l'import.
 
 ### Exemple de fichier
 
