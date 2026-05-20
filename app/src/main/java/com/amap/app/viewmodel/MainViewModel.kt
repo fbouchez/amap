@@ -20,6 +20,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
 
 class MainViewModel : ViewModel() {
 
@@ -76,8 +77,8 @@ class MainViewModel : ViewModel() {
         return people.isNotEmpty()
     }
 
-    fun loadSampleData(context: Context) {
-        val inputStream = context.assets.open("amap_sample.csv")
+    fun loadExampleData(context: Context) {
+        val inputStream = context.assets.open("example.csv")
         rawCsvContent = inputStream.bufferedReader().readText()
         applyParseResult(CsvParser.parseFromString(rawCsvContent))
     }
@@ -156,6 +157,72 @@ class MainViewModel : ViewModel() {
         }
     }
 
+    fun generateQrData(): String {
+        val hash = computeCsvHash()
+        val rows = people.map { person ->
+            person.items.indices.joinToString("") { i ->
+                if (i in person.checkedItems) "1" else "0"
+            }
+        }
+        return "$hash|${rows.joinToString("|")}"
+    }
+
+    private var snapshot: List<Person>? = null
+
+    fun parseQrData(data: String): QrParseResult {
+        val parts = data.split("|")
+        if (parts.size < 2) return QrParseResult.Error("Format de QR invalide")
+
+        val hash = parts[0]
+        val matrix = parts.drop(1)
+
+        if (matrix.size != people.size) {
+            return QrParseResult.Error("Nombre de personnes différent (${matrix.size} vs ${people.size})")
+        }
+
+        val expectedHash = computeCsvHash()
+        if (hash != expectedHash) {
+            return QrParseResult.HashMismatch(matrix, hash, expectedHash)
+        }
+
+        return QrParseResult.Ok(matrix)
+    }
+
+    fun applyMerge(matrix: List<String>) {
+        saveSnapshot()
+        for (i in people.indices) {
+            val row = matrix[i]
+            for (j in row.indices) {
+                if (row[j] == '1' && j < people[i].items.size) {
+                    if (j !in people[i].checkedItems) {
+                        people[i] = people[i].copy(checkedItems = people[i].checkedItems + j)
+                    }
+                }
+            }
+            if (people[i].checkedItems.size >= people[i].items.size) {
+                people[i] = people[i].copy(isDone = true)
+            }
+        }
+    }
+
+    fun rollbackMerge() {
+        snapshot?.let { saved ->
+            people.clear()
+            people.addAll(saved)
+            snapshot = null
+        }
+    }
+
+    private fun saveSnapshot() {
+        snapshot = people.toList()
+    }
+
+    private fun computeCsvHash(): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        val hash = digest.digest(rawCsvContent.toByteArray())
+        return hash.take(4).joinToString("") { "%02x".format(it) }
+    }
+
     fun saveState(context: Context) {
         val gson = Gson()
         val json = gson.toJson(people.map {
@@ -208,4 +275,10 @@ class MainViewModel : ViewModel() {
         val checkedItems: List<Int>,
         val isDone: Boolean
     )
+}
+
+sealed class QrParseResult {
+    data class Ok(val matrix: List<String>) : QrParseResult()
+    data class HashMismatch(val matrix: List<String>, val actualHash: String, val expectedHash: String) : QrParseResult()
+    data class Error(val message: String) : QrParseResult()
 }

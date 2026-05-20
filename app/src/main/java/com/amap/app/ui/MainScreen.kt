@@ -1,13 +1,10 @@
 package com.amap.app.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.CheckBox
@@ -17,7 +14,9 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Visibility
@@ -26,30 +25,72 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.unit.dp
 import com.amap.app.model.Person
+import com.amap.app.ui.QrCodeDisplayDialog
+import com.amap.app.ui.QrSyncDialog
+import com.amap.app.ui.generateQrCodeBitmap
 import com.amap.app.viewmodel.MainViewModel
+import com.amap.app.viewmodel.QrParseResult
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     viewModel: MainViewModel,
     onPersonClick: (Person) -> Unit,
-    onReimport: () -> Unit
+    onReimport: () -> Unit,
+    onGoHome: () -> Unit,
+    onViewDistribFile: () -> Unit
 ) {
     var showResetDialog by remember { mutableStateOf(false) }
     var showFilterDialog by remember { mutableStateOf(false) }
     var showHelpDialog by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
-    var showCsvTableDialog by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var quickMode by remember { mutableStateOf(false) }
+    var showQrSyncDialog by remember { mutableStateOf(false) }
+    var showQrCodeDialog by remember { mutableStateOf(false) }
+    var showHashMismatchDialog by remember { mutableStateOf(false) }
+    var qrCodeBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+    var pendingMatrix by remember { mutableStateOf<List<String>?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    val scanLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
+        result.contents?.let { content ->
+            when (val parseResult = viewModel.parseQrData(content)) {
+                is QrParseResult.Ok -> {
+                    viewModel.applyMerge(parseResult.matrix)
+                    scope.launch {
+                        val sbResult = snackbarHostState.showSnackbar(
+                            message = "Fusion réussie",
+                            actionLabel = "Annuler"
+                        )
+                        if (sbResult == SnackbarResult.ActionPerformed) {
+                            viewModel.rollbackMerge()
+                        }
+                    }
+                }
+                is QrParseResult.HashMismatch -> {
+                    pendingMatrix = parseResult.matrix
+                    showHashMismatchDialog = true
+                }
+                is QrParseResult.Error -> {
+                    scope.launch {
+                        snackbarHostState.showSnackbar(parseResult.message)
+                    }
+                }
+            }
+        }
+    }
 
     LaunchedEffect(viewModel.downloadError) {
         viewModel.downloadError?.let {
@@ -99,10 +140,59 @@ fun MainScreen(
         )
     }
 
-    if (showCsvTableDialog) {
-        CsvTableDialog(
-            rawCsvContent = viewModel.rawCsvContent,
-            onDismiss = { showCsvTableDialog = false }
+    if (showQrSyncDialog) {
+        QrSyncDialog(
+            onGenerate = {
+                val qrData = viewModel.generateQrData()
+                qrCodeBitmap = generateQrCodeBitmap(qrData)
+                showQrCodeDialog = true
+            },
+            onScan = {
+                scanLauncher.launch(ScanOptions().apply {
+                    setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                    setPrompt("Scannez le QR de l'autre téléphone")
+                    setBeepEnabled(false)
+                    setOrientationLocked(false)
+                })
+            },
+            onDismiss = { showQrSyncDialog = false }
+        )
+    }
+
+    if (showQrCodeDialog && qrCodeBitmap != null) {
+        QrCodeDisplayDialog(
+            qrBitmap = qrCodeBitmap!!,
+            onDismiss = { showQrCodeDialog = false }
+        )
+    }
+
+    if (showHashMismatchDialog) {
+        AlertDialog(
+            onDismissRequest = { showHashMismatchDialog = false },
+            title = { Text("CSV différent") },
+            text = { Text("Les fichiers CSV des deux téléphones sont différents. Fusionner quand même ?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingMatrix?.let { viewModel.applyMerge(it) }
+                    showHashMismatchDialog = false
+                    pendingMatrix = null
+                    scope.launch {
+                        val sbResult = snackbarHostState.showSnackbar(
+                            message = "Fusion effectuée (CSV différents)",
+                            actionLabel = "Annuler"
+                        )
+                        if (sbResult == SnackbarResult.ActionPerformed) {
+                            viewModel.rollbackMerge()
+                        }
+                    }
+                }) { Text("Fusionner") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showHashMismatchDialog = false
+                    pendingMatrix = null
+                }) { Text("Annuler") }
+            }
         )
     }
 
@@ -131,7 +221,7 @@ fun MainScreen(
                                 text = { Text("Voir le fichier de distribution") },
                                 onClick = {
                                     showMenu = false
-                                    showCsvTableDialog = true
+                                    onViewDistribFile()
                                 },
                                 leadingIcon = { Icon(Icons.Default.Description, contentDescription = null) }
                             )
@@ -162,6 +252,15 @@ fun MainScreen(
                                 },
                                 leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null) }
                             )
+                            HorizontalDivider()
+                            DropdownMenuItem(
+                                text = { Text("Revenir à l'écran d'accueil") },
+                                onClick = {
+                                    showMenu = false
+                                    onGoHome()
+                                },
+                                leadingIcon = { Icon(Icons.Default.Home, contentDescription = null) }
+                            )
                         }
                     }
                 },
@@ -173,13 +272,6 @@ fun MainScreen(
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        IconButton(onClick = { quickMode = !quickMode }) {
-                            Icon(
-                                if (quickMode) Icons.Default.CheckBox else Icons.Default.CheckBoxOutlineBlank,
-                                contentDescription = if (quickMode) "Quitter le mode validation rapide" else "Mode validation rapide",
-                                tint = MaterialTheme.colorScheme.onPrimary
-                            )
-                        }
                         IconButton(onClick = { showFilterDialog = true }) {
                             Icon(Icons.Default.FilterList, contentDescription = "Filtrer les colonnes", tint = MaterialTheme.colorScheme.onPrimary)
                         }
@@ -189,6 +281,16 @@ fun MainScreen(
                                 contentDescription = if (viewModel.showDone) "Cacher passés" else "Afficher passés",
                                 tint = MaterialTheme.colorScheme.onPrimary
                             )
+                        }
+                        IconButton(onClick = { quickMode = !quickMode }) {
+                            Icon(
+                                if (quickMode) Icons.Default.CheckBox else Icons.Default.CheckBoxOutlineBlank,
+                                contentDescription = if (quickMode) "Quitter le mode validation rapide" else "Mode validation rapide",
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
+                        IconButton(onClick = { showQrSyncDialog = true }) {
+                            Icon(Icons.Default.QrCode, contentDescription = "Synchronisation", tint = MaterialTheme.colorScheme.onPrimary)
                         }
                     }
                 },
@@ -313,92 +415,17 @@ private fun InfoDialog(
 }
 
 @Composable
-private fun CsvTableDialog(rawCsvContent: String, onDismiss: () -> Unit) {
-    val rows = remember(rawCsvContent) {
-        if (rawCsvContent.isBlank()) emptyList()
-        else com.amap.app.model.CsvParser.parseRawTable(rawCsvContent)
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Fichier de distribution") },
-        text = {
-            if (rows.isEmpty()) {
-                Text("Aucune donnée disponible.", style = MaterialTheme.typography.bodyMedium)
-            } else {
-                val colCount = rows.maxOfOrNull { it.size } ?: 0
-                val colWidths = remember(rows) {
-                    List(colCount) { c ->
-                        val maxLen = rows.maxOf { r -> r.getOrElse(c) { "" }.length }
-                        (maxLen * 8).coerceIn(60, 200)
-                    }
-                }
-                val vScrollState = rememberScrollState()
-                val hScrollState = rememberScrollState()
-                val rowBg = Color(0xFFF5F5F5)
-                val paddingMod = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
-                Column(modifier = Modifier.verticalScroll(vScrollState)) {
-                    rows.forEachIndexed { i, row ->
-                        Row(
-                            modifier = Modifier
-                                .heightIn(min = 28.dp)
-                                .background(if (i > 0 && i % 2 == 0) rowBg else Color.Transparent)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .width(colWidths[0].dp)
-                                    .then(paddingMod),
-                                contentAlignment = if (i == 0) Alignment.Center else Alignment.CenterStart
-                            ) {
-                                Text(
-                                    text = row.getOrElse(0) { "" },
-                                    style = if (i == 0) MaterialTheme.typography.titleSmall
-                                            else MaterialTheme.typography.bodySmall,
-                                    color = if (i == 0) MaterialTheme.colorScheme.primary
-                                            else MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                            Row(modifier = Modifier.horizontalScroll(hScrollState)) {
-                                for (c in 1 until colCount) {
-                                    Box(
-                                        modifier = Modifier
-                                            .width(colWidths[c].dp)
-                                            .then(paddingMod),
-                                        contentAlignment = if (i == 0) Alignment.Center else Alignment.CenterStart
-                                    ) {
-                                        Text(
-                                            text = row.getOrElse(c) { "" },
-                                            style = if (i == 0) MaterialTheme.typography.titleSmall
-                                                    else MaterialTheme.typography.bodySmall,
-                                            color = if (i == 0) MaterialTheme.colorScheme.primary
-                                                    else MaterialTheme.colorScheme.onSurface
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        if (i == 0) HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Fermer") }
-        }
-    )
-}
-
-@Composable
 private fun HelpDialog(onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Aide") },
         text = {
             Column {
-                HelpItem(Icons.Default.MoreVert, "Menu — charger un CSV, télécharger, voir le fichier, réinitialiser")
-                HelpItem(Icons.Default.CheckBoxOutlineBlank, "Mode validation rapide — valider les personnes directement depuis la liste")
+                HelpItem(Icons.Default.MoreVert, "Menu — charger un CSV, télécharger, réinitialiser, revenir à l'accueil")
                 HelpItem(Icons.Default.FilterList, "Filtrer les colonnes — afficher/masquer des articles")
                 HelpItem(Icons.Default.Visibility, "Afficher ou cacher les personnes déjà validées")
+                HelpItem(Icons.Default.CheckBoxOutlineBlank, "Mode validation rapide — valider les personnes directement depuis la liste")
+                HelpItem(Icons.Default.QrCode, "Synchronisation — générer/scanner un QR pour fusionner les coches")
                 HelpItem(Icons.Default.Info, "Informations générales (code entrée, téléphones...)")
                 HelpItem(Icons.AutoMirrored.Filled.HelpOutline, "Aide — cette fenêtre")
             }
