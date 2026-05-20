@@ -75,14 +75,23 @@ fun HomeScreen(
                 onClick = {
                     if (viewModel.people.isEmpty()) {
                         val csvFile = File(context.filesDir, "current.csv")
-                        if (!viewModel.loadCsvFromFile(csvFile)) {
-                            viewModel.loadExampleData(context)
+                        var loaded = csvFile.exists() && viewModel.loadCsvFromFile(csvFile)
+                        if (!loaded) {
+                            try {
+                                viewModel.loadExampleData(context)
+                                loaded = viewModel.people.isNotEmpty()
+                            } catch (e: Exception) {
+                                loaded = false
+                            }
+                        }
+                        if (!loaded) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Aucun fichier disponible.")
+                            }
+                            return@Button
                         }
                     }
-                    if (viewModel.people.isNotEmpty()) onStart()
-                    else scope.launch {
-                        snackbarHostState.showSnackbar("Aucun fichier disponible.")
-                    }
+                    onStart()
                 },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !viewModel.isDownloading
